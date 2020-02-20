@@ -11,7 +11,9 @@
     "react-scripts": "3.3.1",
     "slate": "^0.57.1",
     "slate-react": "^0.57.1",
-    "typescript": "^3.7.5"
+    "styled-components": "^5.0.1",
+    "typescript": "^3.7.5",
+    "use-http": "^0.2.8"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -33,5 +35,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@types/styled-components": "^4.4.3"
   }
 }
