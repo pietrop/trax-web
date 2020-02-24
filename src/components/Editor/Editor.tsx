@@ -93,7 +93,6 @@ export const TextEditor = ({ paragraphs, currentTime }: EditorProps) => {
     const renderElement = useCallback(props => <Segment {...props} />, [])
 
     const markerRect = useMarkerBoundingBox(editor, paragraphs, currentTime)
-    console.log(markerRect)
 
     return (
         <Slate editor={editor} value={value} onChange={value => setValue(value)}>

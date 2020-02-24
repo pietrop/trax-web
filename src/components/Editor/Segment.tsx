@@ -7,6 +7,7 @@ const SegmentContainer = styled.div`
 
 const Paragraph = styled.p`
     flex: 1;
+    word-break: break-word;
 `
 
 const SpeakerBox = styled.div`
