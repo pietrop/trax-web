@@ -1,0 +1,11 @@
+{
+	"folders": [{
+			"name": "root",
+			"path": "."
+		},
+		{
+			"name": "api-server",
+			"path": "api-server"
+		}
+	]
+}

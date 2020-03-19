@@ -6,14 +6,18 @@
     "@types/node": "^12.12.26",
     "@types/react": "^16.9.19",
     "@types/react-dom": "^16.9.5",
+    "axios": "^0.19.2",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-scripts": "3.3.1",
-    "slate": "^0.57.1",
-    "slate-react": "^0.57.1",
+    "react-use": "^13.27.0",
+    "slate": "github:bartzy/slate#slate-v0.57.1-gitpkg",
+    "slate-react": "github:bartzy/slate#slate-react-v0.57.1-gitpkg",
     "styled-components": "^5.0.1",
+    "styled-tools": "^1.7.1",
     "typescript": "^3.7.5",
-    "use-http": "^0.2.8"
+    "use-http": "^0.2.8",
+    "uuid": "^7.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -37,6 +41,7 @@
     ]
   },
   "devDependencies": {
-    "@types/styled-components": "^4.4.3"
+    "@types/styled-components": "^4.4.3",
+    "@types/uuid": "^3.4.7"
   }
 }

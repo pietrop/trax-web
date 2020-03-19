@@ -1,1 +1,2 @@
-export * from './speech'
+export * from './task'
+export * from './glossary'
