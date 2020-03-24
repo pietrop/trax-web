@@ -6,6 +6,8 @@ const CommonBlock = styled.div`
     padding: 12px 20px;
     margin: 16px 0;
     outline: none;
+    white-space: break-spaces;
+    word-break: break-word;
 
     &:first-of-type {
         margin: 0;
