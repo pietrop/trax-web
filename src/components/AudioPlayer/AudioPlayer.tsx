@@ -69,6 +69,7 @@ const PlaybackControls = styled.div`
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
+    background-color: rgb(246, 248, 250);
 `
 
 const TrackWrapper = styled.div`
@@ -209,13 +210,13 @@ type AudioTimingInfo = {
 }
 
 function getAudioTimingInfo(task: Task): AudioTimingInfo {
-    const start = task.text.before[0].timing.start
-    const end = task.text.after[task.text.after.length - 1].timing.end
+    const start = task.timing.start
+    const end = task.timing.end
     return {
         duration: end - start,
         activeSegment: {
-            start: task.timing.editable.start - start,
-            end: task.timing.editable.end - start,
+            start: task.text.editable.timing.start - start,
+            end: task.text.editable.timing.end - start,
         },
     }
 }
@@ -273,14 +274,14 @@ export const AudioPlayer = ({ src, task, onTimeUpdate, onTogglePlay, audioRef }:
     ])
     const onTrackTimeUpdate = useCallback(
         time => {
-            const absoluteTime = task.text.before[0].timing.start + time
+            const absoluteTime = task.timing.start + time
             seekTo(absoluteTime, audioRef.current)
         },
         [audioRef, task],
     )
 
     const timingInfo = useMemo(() => getAudioTimingInfo(task), [task])
-    const normalizedCurrentTime = currentTime - task.text.before[0].timing.start
+    const normalizedCurrentTime = currentTime - task.timing.start
 
     return (
         <Strip>
@@ -298,9 +299,7 @@ export const AudioPlayer = ({ src, task, onTimeUpdate, onTogglePlay, audioRef }:
             <audio
                 ref={audioRef}
                 controls
-                src={`${src}#t=${task.text.before[0].timing.start},${
-                    task.text.after[task.text.after.length - 1].timing.end
-                }`}
+                src={`${src}#t=${task.timing.start},${task.timing.end}`}
                 preload="auto"
                 onTimeUpdate={handleTimeUpdate}
                 style={{

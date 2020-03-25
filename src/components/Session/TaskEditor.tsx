@@ -6,7 +6,9 @@ import { TextEditor } from 'src/components/Editor'
 
 const Page = styled.div`
     max-width: 750px;
-    margin: 65px 80px;
+    max-height: 100%;
+    margin: 0 80px;
+    padding-top: 40px;
     color: #222222;
     font-family: 'Literata', sans-serif;
     font-size: 18px;
@@ -28,9 +30,10 @@ interface TaskProps {
 }
 
 export const TaskEditor = ({ editor, task, currentTime, isAudioPlaying, onCursorTimeChange }: TaskProps) => {
+    const headingText = task.type === 'edit' ? 'Correct the following:' : 'Review the following:'
     return (
         <Page>
-            <Heading>Transcribe the following:</Heading>
+            <Heading>{headingText}</Heading>
             <TextEditor
                 editor={editor}
                 task={task}

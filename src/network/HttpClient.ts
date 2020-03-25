@@ -1,13 +1,14 @@
 import axios, { AxiosInstance } from 'axios'
 import { TransportLayer } from './TransportLayer'
-import { Task, Glossary } from 'src/models'
-import { TaskJSON, GlossaryJSON, toTask, toGlossary } from './responses'
+import { Task, Glossary, WorkerId } from 'src/models'
+import { StatusJSON, TaskJSON, GlossaryJSON, toTask, toGlossary } from './responses'
 
 interface HttpClientOptions {
     baseUrl: string
 }
 
 export class HttpClient implements TransportLayer {
+    public workerId: string | null = null
     private options: HttpClientOptions
     private client: AxiosInstance
 
@@ -18,18 +19,40 @@ export class HttpClient implements TransportLayer {
         })
     }
 
-    async requestNewTask(): Promise<Task> {
-        const response = await this.client.post<TaskJSON>('/tasks')
+    async authenticate(taskTypes: string[] = ['edit', 'review']): Promise<WorkerId> {
+        const response = await this.client.post<StatusJSON>('/status', { task_types: taskTypes })
+        const json = response.data
+        return json.id
+    }
+
+    async requestNewTask(workerId: WorkerId): Promise<Task> {
+        const response = await this.client.post<TaskJSON>('/tasks/request', { worker_id: workerId })
         const task = toTask(response.data)
         return task
     }
 
-    async publishTask(task: Task): Promise<void> {
-        throw new Error('Method not implemented.')
+    async publishTask(task: Task, workerId: WorkerId): Promise<void> {
+        const body = {
+            task_id: task.id,
+            worker_id: workerId,
+            segments: {
+                body: {
+                    start: task.text.editable.timing.start,
+                    end: task.text.editable.timing.end,
+                    words: task.text.editable.words.map(w => ({
+                        word: w.text,
+                        start: w.timing.start,
+                        end: w.timing.end,
+                    })),
+                },
+            },
+        }
+
+        await this.client.post(`/tasks/submit`, body)
     }
 
     async getGlossary(): Promise<Glossary> {
-        const response = await this.client.get<GlossaryJSON>('/glossary')
+        const response = await this.client.get<GlossaryJSON>('/gloss')
         const glossary = toGlossary(response.data)
         return glossary
     }

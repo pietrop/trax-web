@@ -1,5 +1,9 @@
 import { Task, Word, Glossary } from 'src/models'
 
+export interface StatusJSON {
+    id: string
+}
+
 interface WordJSON {
     word: string
     start: number
@@ -9,17 +13,34 @@ interface WordJSON {
 
 export interface TaskJSON {
     id: string
-    text: {
-        before: WordJSON[]
-        editable: WordJSON[]
-        after: WordJSON[]
+    type: 'edit' | 'review'
+    start: number
+    end: number
+    segments: {
+        before: {
+            start: number
+            end: number
+            words: WordJSON[]
+        }
+        after: {
+            start: number
+            end: number
+            words: WordJSON[]
+        }
+        body: {
+            start: number
+            end: number
+            words: WordJSON[]
+        }
     }
-    editable_start: number
-    editable_end: number
 }
 
 export interface GlossaryJSON {
-    glossary: {term: string}[]
+    gloss: {
+        id: string
+        text: string
+        comment: string
+    }[]
 }
 
 const toWord = (json: WordJSON): Word => ({
@@ -33,19 +54,36 @@ const toWord = (json: WordJSON): Word => ({
 
 export const toTask = (json: TaskJSON): Task => ({
     id: json.id,
+    type: json.type,
     text: {
-        before: json.text.before.map(toWord),
-        editable: json.text.editable.map(toWord),
-        after: json.text.after.map(toWord),
+        before: {
+            words: json.segments.before.words.map(toWord),
+            timing: {
+                start: json.segments.before.start,
+                end: json.segments.before.end,
+            },
+        },
+        editable: {
+            words: json.segments.body.words.map(toWord),
+            timing: {
+                start: json.segments.body.start,
+                end: json.segments.body.end,
+            },
+        },
+        after: {
+            words: json.segments.after.words.map(toWord),
+            timing: {
+                start: json.segments.after.start,
+                end: json.segments.after.end,
+            },
+        },
     },
     timing: {
-        editable: {
-            start: json.editable_start,
-            end: json.editable_end,
-        },
+        start: json.start,
+        end: json.end,
     },
 })
 
 export const toGlossary = (json: GlossaryJSON): Glossary => ({
-    terms: json.glossary.map(term => term.term)
+    terms: json.gloss.map(term => term.text),
 })

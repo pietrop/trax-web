@@ -8,14 +8,18 @@ export interface Word extends Text {
     speaker: string | null
 }
 
+export interface Segment {
+    words: Word[]
+    timing: Range
+}
+
 export interface Task {
     id: UUID
+    type: 'edit' | 'review'
     text: {
-        before: Word[]
-        editable: Word[]
-        after: Word[]
+        before: Segment
+        editable: Segment
+        after: Segment
     }
-    timing: {
-        editable: Range
-    }
+    timing: Range
 }

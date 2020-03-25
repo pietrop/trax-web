@@ -4,7 +4,7 @@ import { Session } from 'src/components/Session'
 import { HttpClient } from 'src/network'
 import { TopBar } from './TopBar'
 
-const httpClient = new HttpClient({ baseUrl: 'http://localhost:8000' })
+const httpClient = new HttpClient({ baseUrl: 'http://localhost:8080' })
 
 const GlobalStyle = createGlobalStyle`
     html {
@@ -13,6 +13,7 @@ const GlobalStyle = createGlobalStyle`
         height: 100vh;
         margin: 0;
         padding: 0;
+        overflow: hidden;
     }
     body {
         width: 100%;

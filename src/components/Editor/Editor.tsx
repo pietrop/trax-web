@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { Editor, Element, Node, NodeEntry, Path, Point, Range as SlateRange, Text } from 'slate'
 import { Editable, ReactEditor, Slate } from 'slate-react'
 import { Task, Word } from 'src/models'
@@ -202,9 +202,9 @@ export const TextEditor = ({
     onCursorTimeChange,
 }: EditorProps) => {
     const nodes = useMemo<Node[]>(() => {
-        const before = createBlocks(task.text.before, { editable: false })
-        const editable = createBlocks(task.text.editable, { editable: true })
-        const after = createBlocks(task.text.after, { editable: false })
+        const before = createBlocks(task.text.before.words, { editable: false })
+        const editable = createBlocks(task.text.editable.words, { editable: true })
+        const after = createBlocks(task.text.after.words, { editable: false })
 
         return [before, editable, after].flat()
     }, [task])
@@ -238,6 +238,24 @@ export const TextEditor = ({
         }
     }, [editor, onCursorTimeChange])
 
+    // @ts-ignore
+    window.editor = editor
+
+    useEffect(() => {
+        const apply = editor.apply
+        editor.apply = op => {
+            if (op.type === 'insert_text') {
+                const [leaf] = Editor.leaf(editor, op.path)
+                if (Content.isContent(leaf)) {
+                    const i = leaf.timings.findIndex(timing => Range.contains(timing.chars, op.offset))
+                    console.log(i)
+                    console.log(leaf.timings[i])
+                }
+            }
+            apply(op)
+        }
+    }, [editor])
+
     const renderElement = useCallback(props => <BlockView {...props} />, [])
     // if renderLeaf is wrapped with useCallback, leaves are not re-rendered on decoration changes
     // See https://github.com/ianstormtaylor/slate/issues/3447
@@ -254,7 +272,7 @@ export const TextEditor = ({
                 onClick={onClick}
                 style={{
                     position: 'relative',
-                    minHeight: '100%',
+                    paddingBottom: 20,
                 }}
             />
         </Slate>
