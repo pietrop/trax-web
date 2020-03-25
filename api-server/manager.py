@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import List, NamedTuple, Optional
-from uuid import uuid4
+import uuid
 import random
 
 
-MIN_TASK_DURATION = 10
-MAX_TASK_DURATION = 40
+MIN_TASK_DURATION = 50
+MAX_TASK_DURATION = 220
 MIN_TIME_BEFORE_AFTER = 7
-MAX_TIME_BEFORE_AFTER = 15
+MAX_TIME_BEFORE_AFTER = 40
 
 
 @dataclass
@@ -44,21 +44,31 @@ class WordList:
 
 
 @dataclass
-class TaskText:
-    before: List[Word]
-    editable: List[Word]
-    after: List[Word]
+class Segment:
+    start: float
+    end: float
+    words: List[Word]
+
+
+@dataclass
+class TaskSegments:
+    before: Segment
+    body: Segment
+    after: Segment
 
 
 @dataclass
 class Task:
     id: str
-    text: TaskText
-    editable_start: float
-    editable_end: float
+    type: str
+    segments: TaskSegments
+    start: float
+    end: float
 
 
 class Manager:
+    task_types = ['edit', 'review']
+
     def __init__(self, wordlist: WordList):
         self.wordlist = wordlist
 
@@ -76,7 +86,16 @@ class Manager:
         after_time = after_time if after_time <= self.wordlist.end_time else self.wordlist.end_time
         after_end_idx, word = self.wordlist.word_near_time(after_time)
 
-        return self.wordlist[editable_end_idx + 1 : after_end_idx]
+        return self.wordlist[editable_end_idx + 1:after_end_idx]
+
+    def _get_segment_from_words(self, words, start_time_if_empty=0):
+        if len(words) > 0:
+            start = words[0].start
+            end = words[-1].end
+        else:
+            start = end = start_time_if_empty
+
+        return Segment(start=start, end=end, words=words)
 
     def get_random_task(self):
         duration = random.uniform(MIN_TASK_DURATION, MAX_TASK_DURATION)
@@ -86,16 +105,20 @@ class Manager:
         start_idx, start_word = self.wordlist.word_near_time(start)
         end_idx, end_word = self.wordlist.word_near_time(end)
 
-        editable_words = self.wordlist[start_idx : end_idx + 1]
+        body_words = self.wordlist[start_idx:end_idx + 1]
         before_words = self._get_before_text(start_idx)
         after_words = self._get_after_text(end_idx)
 
+        body_segment = self._get_segment_from_words(body_words)
+        before_segment = self._get_segment_from_words(before_words, start_time_if_empty=body_words[0].start)
+        after_segment = self._get_segment_from_words(after_words, start_time_if_empty=body_words[-1].end)
+
         task = Task(
-            id=uuid4().hex,
-            text=TaskText(before=before_words, editable=editable_words, after=after_words),
-            editable_start=start_word.start,
-            editable_end=end_word.end,
+            id=str(uuid.uuid4()),
+            type=random.choice(self.task_types),
+            segments=TaskSegments(before=before_segment, body=body_segment, after=after_segment),
+            start=before_segment.start,
+            end=after_segment.end
         )
 
         return task
-
