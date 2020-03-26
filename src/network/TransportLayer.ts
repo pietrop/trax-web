@@ -1,7 +1,8 @@
-import { Task, Glossary, WorkerId } from 'src/models'
+import { Task, Glossary, WorkerId, SessionStatus } from 'src/models'
 
 export interface TransportLayer {
     authenticate(taskTypes?: string[]): Promise<WorkerId>
+    getSessionStatus(workerId: WorkerId): Promise<SessionStatus>
     requestNewTask(workerId: WorkerId): Promise<Task>
     publishTask(task: Task, workerId: WorkerId): Promise<void>
     getGlossary(): Promise<Glossary>

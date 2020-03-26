@@ -1,7 +1,15 @@
 import axios, { AxiosInstance } from 'axios'
 import { TransportLayer } from './TransportLayer'
-import { Task, Glossary, WorkerId } from 'src/models'
-import { StatusJSON, TaskJSON, GlossaryJSON, toTask, toGlossary } from './responses'
+import { Task, Glossary, WorkerId, SessionStatus } from 'src/models'
+import {
+    WorkerStatusJSON,
+    SessionStatusJSON,
+    TaskJSON,
+    GlossaryJSON,
+    toTask,
+    toGlossary,
+    toSessionStatus,
+} from './responses'
 
 interface HttpClientOptions {
     baseUrl: string
@@ -20,9 +28,15 @@ export class HttpClient implements TransportLayer {
     }
 
     async authenticate(taskTypes: string[] = ['edit', 'review']): Promise<WorkerId> {
-        const response = await this.client.post<StatusJSON>('/status', { task_types: taskTypes })
+        const response = await this.client.post<WorkerStatusJSON>('/status', { task_types: taskTypes })
         const json = response.data
         return json.id
+    }
+
+    async getSessionStatus(workerId: string): Promise<SessionStatus> {
+        const response = await this.client.get<SessionStatusJSON>('/status')
+        const status = toSessionStatus(response.data, workerId)
+        return status
     }
 
     async requestNewTask(workerId: WorkerId): Promise<Task> {

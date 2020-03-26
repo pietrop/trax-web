@@ -1,50 +1,97 @@
 import React, { useCallback, useReducer, useState, useEffect, useRef, useMemo } from 'react'
 import styled from 'styled-components/macro'
-import { createEditor, Editor, Node } from 'slate'
+import { createEditor } from 'slate'
 import { withReact } from 'slate-react'
 import { withHistory } from 'slate-history'
 import { TransportLayer } from 'src/network'
-import { Task, WorkerId } from 'src/models'
+import { Task, SessionStatus, WorkerId } from 'src/models'
 import { AudioPlayer } from 'src/components/AudioPlayer'
 import { GlossaryPanel } from 'src/components/GlossaryPanel'
 import { TaskEditor } from './TaskEditor'
 
-type Idle = {
-    state: 'idle'
+interface InitialState {
+    state: 'initial'
 }
 
-type InProgress = {
+interface FetchingSessionStatus {
+    state: 'fetching-session-status'
+}
+
+interface IdleSessionState {
+    state: 'idle'
+    status: SessionStatus
+}
+
+interface TaskInProgressState {
     state: 'inprogress'
     task: Task
+    status: SessionStatus
 }
 
-type PublishingTask = {
+interface PublishingTaskState {
     state: 'publishing'
+    status: SessionStatus
 }
 
-type State = Idle | InProgress | PublishingTask
+type State =
+    | InitialState
+    | FetchingSessionStatus
+    | IdleSessionState
+    | TaskInProgressState
+    | PublishingTaskState
 
 type Action =
+    | { type: 'fetch-session-status' }
+    | { type: 'set-session-status'; status: SessionStatus }
     | { type: 'request-task' }
     | { type: 'set-task'; task: Task }
     | { type: 'publish-task' }
     | { type: 'task-published' }
 
 function reducer(state: State, action: Action): State {
-    switch (action.type) {
-        case 'set-task':
-            return {
-                state: 'inprogress',
-                task: action.task,
+    switch (state.state) {
+        case 'initial':
+            switch (action.type) {
+                case 'fetch-session-status':
+                    return { state: 'fetching-session-status' }
+                default:
+                    return state
             }
 
-        case 'publish-task':
-            return {
-                state: 'publishing',
+        case 'fetching-session-status':
+            switch (action.type) {
+                case 'set-session-status':
+                    return { state: 'idle', status: action.status }
+                default:
+                    return state
+            }
+
+        case 'idle':
+        case 'inprogress':
+        case 'publishing':
+            switch (action.type) {
+                case 'set-task':
+                    return {
+                        ...state,
+                        state: 'inprogress',
+                        task: action.task,
+                    }
+                case 'publish-task':
+                    return {
+                        ...state,
+                        state: 'publishing',
+                    }
+                default:
+                    return state
             }
     }
+}
 
-    return { state: 'idle' }
+async function getSessionStatus(transport: TransportLayer, dispatch: React.Dispatch<Action>) {
+    dispatch({ type: 'fetch-session-status' })
+    const workerId = await transport.authenticate()
+    const status = await transport.getSessionStatus(workerId)
+    dispatch({ type: 'set-session-status', status })
 }
 
 async function publishTask(
@@ -67,6 +114,18 @@ async function requestNewTask(
     const task = await transport.requestNewTask(workerId)
     dispatch({ type: 'set-task', task })
     return task
+}
+
+async function requestNewTaskAndSetAudioTime(
+    transport: TransportLayer,
+    dispatch: React.Dispatch<Action>,
+    workerId: WorkerId,
+    audioEl: HTMLAudioElement | null,
+) {
+    const task = await requestNewTask(transport, dispatch, workerId)
+    if (audioEl) {
+        audioEl.currentTime = task.text.editable.timing.start + 0.0001
+    }
 }
 
 const Container = styled.div`
@@ -150,37 +209,31 @@ interface SessionProps {
 
 export const Session = ({ transport }: SessionProps) => {
     const editor = useMemo(() => withHistory(withReact(createEditor())), [])
+    const audioRef = useRef<HTMLAudioElement>(null)
 
-    const [workerId, setWorkerId] = useState<string | null>(null)
+    const [session, dispatch] = useReducer(reducer, { state: 'initial' })
+    // Authenticate and get session status only once
     useEffect(() => {
-        async function auth() {
-            const id = await transport.authenticate()
-            setWorkerId(id)
-        }
-
-        auth()
+        getSessionStatus(transport, dispatch)
     }, [])
 
-    const [session, dispatch] = useReducer(reducer, { state: 'idle' })
-    const audio = '/samples/1525310-trimmed/1525310-trimmed.wav'
+    // Request a new task if the session is ready (idle)
+    useEffect(() => {
+        if (session.state === 'idle') {
+            requestNewTaskAndSetAudioTime(transport, dispatch, session.status.workerId, audioRef.current)
+        }
+    }, [session.state, audioRef.current])
+
     const audioTiming = session.state === 'inprogress' ? session.task.timing : { start: 0, end: 0 }
     const [currentTime, setCurrentTime] = useState(audioTiming.start)
     const [isAudioPlaying, setIsAudioPlaying] = useState(false)
-    const audioRef = useRef<HTMLAudioElement>(null)
 
     const onCursorTimeChange = useCallback((cursorTime: number) => {
         audioRef.current!.currentTime = cursorTime
     }, [])
 
-    const fetchNewTask = async (workerId: WorkerId) => {
-        const task = await requestNewTask(transport, dispatch, workerId)
-        if (audioRef.current) {
-            audioRef.current.currentTime = task.text.editable.timing.start + 0.0001
-        }
-    }
-
     const handlePublish = async () => {
-        if (session.state !== 'inprogress' || !workerId) {
+        if (session.state !== 'inprogress') {
             return
         }
 
@@ -188,15 +241,9 @@ export const Session = ({ transport }: SessionProps) => {
         // console.log('leaf', Node.leaf(editableNode, [0]))
         // console.log(editableNode)
 
-        await publishTask(session.task, transport, dispatch, workerId)
-        fetchNewTask(workerId)
+        await publishTask(session.task, transport, dispatch, session.status.workerId)
+        requestNewTaskAndSetAudioTime(transport, dispatch, session.status.workerId, audioRef.current)
     }
-
-    useEffect(() => {
-        if (workerId) {
-            fetchNewTask(workerId)
-        }
-    }, [workerId])
 
     return (
         <Container>
@@ -222,7 +269,7 @@ export const Session = ({ transport }: SessionProps) => {
             <BottomPane>
                 {session.state === 'inprogress' && (
                     <AudioPlayer
-                        src={audio}
+                        src={session.status.audioUrl}
                         task={session.task}
                         onTogglePlay={setIsAudioPlaying}
                         onTimeUpdate={setCurrentTime}

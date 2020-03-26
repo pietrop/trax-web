@@ -1,7 +1,19 @@
-import { Task, Word, Glossary } from 'src/models'
+import { Task, Word, Glossary, SessionStatus, WorkerId } from 'src/models'
 
-export interface StatusJSON {
+export interface WorkerStatusJSON {
     id: string
+}
+
+export interface SessionStatusJSON {
+    status: {
+        session_started_at: string
+        gloss_modified_at: string
+        is_active: boolean
+    }
+    metadata: {
+        audio_url: string
+        attachments: any
+    }
 }
 
 interface WordJSON {
@@ -86,4 +98,13 @@ export const toTask = (json: TaskJSON): Task => ({
 
 export const toGlossary = (json: GlossaryJSON): Glossary => ({
     terms: json.gloss.map(term => term.text),
+})
+
+export const toSessionStatus = (json: SessionStatusJSON, workerId: WorkerId): SessionStatus => ({
+    workerId,
+    active: json.status.is_active,
+    startedAt: new Date(json.status.session_started_at),
+    glossaryModifiedAt: new Date(json.status.gloss_modified_at),
+    audioUrl: json.metadata.audio_url,
+    attachments: json.metadata.attachments,
 })
