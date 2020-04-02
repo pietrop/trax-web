@@ -70,6 +70,7 @@ export const toTask = (json: TaskJSON): Task => ({
     text: {
         before: {
             words: json.segments.before.words.map(toWord),
+            speaker: json.segments.before.words[0]?.speaker,
             timing: {
                 start: json.segments.before.start,
                 end: json.segments.before.end,
@@ -77,6 +78,7 @@ export const toTask = (json: TaskJSON): Task => ({
         },
         editable: {
             words: json.segments.body.words.map(toWord),
+            speaker: json.segments.body.words[0]?.speaker,
             timing: {
                 start: json.segments.body.start,
                 end: json.segments.body.end,
@@ -84,6 +86,7 @@ export const toTask = (json: TaskJSON): Task => ({
         },
         after: {
             words: json.segments.after.words.map(toWord),
+            speaker: json.segments.after.words[0]?.speaker,
             timing: {
                 start: json.segments.after.start,
                 end: json.segments.after.end,

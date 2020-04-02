@@ -1,11 +1,34 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
-import { Editor, Element, Node, NodeEntry, Path, Point, Range as SlateRange, Text } from 'slate'
-import { Editable, ReactEditor, Slate } from 'slate-react'
-import { Task, Word } from 'src/models'
+import { Editor, Element, Node, NodeEntry, Path, Point, Range as SlateRange, Text, Transforms } from 'slate'
+import { Editable, ReactEditor, Slate, RenderElementProps } from 'slate-react'
+import { Task, Word, Term, Segment } from 'src/models'
 import { Range } from 'src/utils/range'
 import { isPunctuation } from 'src/utils/text'
-import { BlockView } from './BlockView'
-import { ContentView } from './ContentView'
+import { BlockView } from './nodes/BlockView'
+import { SpeakerBoxView } from './nodes/SpeakerBoxView'
+import { ContentView } from './nodes/ContentView'
+import { ContentTextView } from './nodes/ContentTextView'
+import { UnclearView } from './nodes/UnclearView'
+
+/**
+ * Types of tags:
+ *  Void:
+ *      Inaudible
+ *      Laughter
+ *  Text:
+ *      Glossary
+ *
+ */
+
+interface Tag {
+    type: 'text' | 'void'
+    name: string
+}
+
+interface GlossTermTag {
+    type: 'text'
+    term: Term
+}
 
 interface EditorProps {
     editor: ReactEditor
@@ -22,27 +45,48 @@ interface Timing {
 
 export interface Block extends Element {
     type: 'block'
+    speaker: string | null
     editable: boolean
-    children: Content[]
+    timings: Timing[]
+    children: [SpeakerBox, Content]
 }
 
-export interface Content extends Text {
+export interface SpeakerBox extends Element {
+    type: 'speakerbox'
+    speaker: string | null
+    availableSpeakers: string[]
+    duration: number
+}
+
+export interface Content extends Element {
     type: 'content'
-    timings: Timing[]
+    editable: boolean
+    children: ContentText[]
+}
+
+export interface ContentText extends Text {
+    type: 'text'
     editable: boolean
     text: string
     timingHighlight?: 'before' | 'now' | 'after'
+    unclear: boolean
 }
 
-const Content = {
+export const Block = {
+    isBlock: (value: any): value is Block => {
+        return value['type'] === 'block'
+    },
+}
+
+export const Content = {
     isContent: (value: any): value is Content => {
         return value['type'] === 'content'
     },
 }
 
-function createContent(words: Word[], { editable }: { editable: boolean }): Content {
+function createContent(words: Word[], { editable }: { editable: boolean }): [Content, Timing[]] {
     let text = ''
-    let timings = []
+    let timings: Timing[] = []
 
     for (let i = 0; i < words.length; i++) {
         let curr = words[i]
@@ -68,16 +112,35 @@ function createContent(words: Word[], { editable }: { editable: boolean }): Cont
         }
     }
 
-    return {
-        type: 'content',
+    return [
+        {
+            type: 'content',
+            editable,
+            children: [
+                {
+                    type: 'text',
+                    text,
+                    editable,
+                    unclear: false,
+                },
+            ],
+        },
         timings,
-        text,
-        editable,
+    ]
+}
+
+function createSpeakerBox(speaker: string | null, duration: number): SpeakerBox {
+    return {
+        type: 'speakerbox',
+        speaker,
+        availableSpeakers: [],
+        duration,
+        children: [{ text: '' }],
     }
 }
 
-function createBlocks(words: Word[], { editable }: { editable: boolean }): Block[] {
-    const paragraphs = words.reduce<Word[][]>((chunks, word, i) => {
+function createBlocks(segment: Segment, { editable }: { editable: boolean }): Block[] {
+    const paragraphs = segment.words.reduce<Word[][]>((chunks, word, i) => {
         if (word.speaker || i === 0) {
             chunks.push([])
         }
@@ -86,11 +149,41 @@ function createBlocks(words: Word[], { editable }: { editable: boolean }): Block
         return chunks
     }, [])
 
-    return paragraphs.map(p => ({
-        type: 'block',
-        editable,
-        children: [createContent(p, { editable })],
-    }))
+    return paragraphs.map(p => {
+        const [content, timings] = createContent(p, { editable })
+        const speakerBox = createSpeakerBox(segment.speaker, segment.timing.end - segment.timing.start)
+
+        return {
+            type: 'block',
+            speaker: segment.speaker,
+            editable,
+            timings,
+            children: [speakerBox, content],
+        }
+    })
+}
+
+function splitTimingsBasedOnOffset(timings: Timing[], offset: number): [Timing[], Timing[], Timing[]] {
+    let before: Timing[]
+    let after: Timing[]
+    let now: Timing[]
+
+    const i = timings.findIndex(timing => timing.chars.end >= offset)
+
+    if (i === -1) {
+        before = timings.slice()
+        now = after = []
+    } else if (Range.contains(timings[i].chars, offset)) {
+        before = timings.slice(0, i)
+        now = [timings[i]]
+        after = timings.slice(i + 1)
+    } else {
+        before = timings.slice(0, i)
+        now = []
+        after = timings.slice(i)
+    }
+
+    return [before, now, after]
 }
 
 function splitTimings(timings: Timing[], time: number): [Timing[], Timing[], Timing[]] {
@@ -130,12 +223,20 @@ function rangeForTimings(timings: Timing[], path: Path, attributes: { [key: stri
     return { anchor, focus, ...attributes }
 }
 
-function handleDecorate([node, path]: NodeEntry, currentTime: number): SlateRange[] {
+function handleDecorate(editor: Editor, [node, path]: NodeEntry, currentTime: number): SlateRange[] {
     if (!Content.isContent(node)) {
         return []
     }
+    const [block] = Editor.parent(editor, path)
+    if (!Block.isBlock(block)) {
+        console.assert(
+            false,
+            'Found a Content node that has no Block parent while decorating. This is a logic error.',
+        )
+        return []
+    }
 
-    const timings = node.timings
+    const timings = block.timings
     if (timings[0].time.start > currentTime) {
         // Entire node is after current time
         return [
@@ -171,8 +272,6 @@ function handleDecorate([node, path]: NodeEntry, currentTime: number): SlateRang
  * The current selection is preferably fetched from Slate's editor directly since it's the most performant (it's already calculated)
  * but in some cases, like read-only content (contenteditable=false), it can be null.
  * In these cases, we can get the caret position from the global window.getSelection() function call.
- *
- * @param editor
  */
 function pointFromCurrentSelection(editor: ReactEditor): Point | null {
     if (editor.selection) {
@@ -202,9 +301,9 @@ export const TextEditor = ({
     onCursorTimeChange,
 }: EditorProps) => {
     const nodes = useMemo<Node[]>(() => {
-        const before = createBlocks(task.text.before.words, { editable: false })
-        const editable = createBlocks(task.text.editable.words, { editable: true })
-        const after = createBlocks(task.text.after.words, { editable: false })
+        const before = createBlocks(task.text.before, { editable: false })
+        const editable = createBlocks(task.text.editable, { editable: true })
+        const after = createBlocks(task.text.after, { editable: false })
 
         return [before, editable, after].flat()
     }, [task])
@@ -214,29 +313,46 @@ export const TextEditor = ({
         setValue(newValue)
     }, [])
 
-    const onClick = useCallback(() => {
-        const caretPosition = pointFromCurrentSelection(editor)
-        if (!caretPosition) {
-            return
-        }
-        const leafEntry = Editor.leaf(editor, caretPosition)
-        const leaf = leafEntry[0]
-        const offset = caretPosition.offset
-        if (Content.isContent(leaf)) {
-            const timings = leaf.timings
-            const i = timings.findIndex(timing => timing.chars.end >= offset)
-            if (i === -1) {
-                console.assert(
-                    'ERROR: Selection was made but the leaf does not have the relevant Timing entry',
-                )
-            } else if (Range.contains(timings[i].chars, offset)) {
-                // Note: if we report the exactly start time of the word, it can select the previous word, so we add a small amount of time
-                onCursorTimeChange && onCursorTimeChange(timings[i].time.start + 0.01)
-            } else {
-                console.log('after?')
+    const onClick = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            if (!(e.target instanceof HTMLElement)) {
+                return
             }
-        }
-    }, [editor, onCursorTimeChange])
+
+            // Only clicks on Content elements or their descendants
+            const node = ReactEditor.toSlateNode(editor, e.target)
+            const path = ReactEditor.findPath(editor, node)
+            if (
+                Array.from(Editor.nodes(editor, { at: path, match: n => Content.isContent(n) })).length === 0
+            ) {
+                console.log("Clicked on node that has no Content ancestor. This won't seek audio.")
+                return
+            }
+
+            const caretPosition = pointFromCurrentSelection(editor)
+            if (!caretPosition) {
+                return
+            }
+            const [block] = Editor.node(editor, caretPosition, { depth: 1 })
+            const offset = caretPosition.offset
+
+            if (Block.isBlock(block)) {
+                const timings = block.timings
+                const i = timings.findIndex(timing => timing.chars.end >= offset)
+                if (i === -1) {
+                    console.assert(
+                        'ERROR: Selection was made but the block does not have the relevant Timing entry',
+                    )
+                } else if (Range.contains(timings[i].chars, offset)) {
+                    // Note: if we report the exactly start time of the word, it can select the previous word, so we add a small amount of time
+                    onCursorTimeChange && onCursorTimeChange(timings[i].time.start + 0.01)
+                } else {
+                    console.log('after?')
+                }
+            }
+        },
+        [editor, onCursorTimeChange],
+    )
 
     // @ts-ignore
     window.editor = editor
@@ -245,22 +361,112 @@ export const TextEditor = ({
         const apply = editor.apply
         editor.apply = op => {
             if (op.type === 'insert_text') {
-                const [leaf] = Editor.leaf(editor, op.path)
-                if (Content.isContent(leaf)) {
-                    const i = leaf.timings.findIndex(timing => Range.contains(timing.chars, op.offset))
+                const [block] = Editor.node(editor, op.path, { depth: 1 })
+
+                if (Block.isBlock(block)) {
+                    // let [before, now, after] = splitTimingsBasedOnOffset(block.timings, op.offset)
+
+                    // if (op.text === ' ') {
+                    //     for (let i = 0; i < after.length; i++) {
+                    //         debugger
+                    //         after[i].chars.start = after[i].chars.start + 1
+                    //     }
+                    //     if (now.length > 0) {
+                    //         // Split the now word
+                    //         if (op.offset < now[0].chars.end) {
+                    //             const newTiming = {
+                    //                 chars: { start: op.offset + 1 },
+                    //             }
+                    //         }
+                    //     }
+                    // }
+                    const i = block.timings.findIndex(timing => Range.contains(timing.chars, op.offset))
                     console.log(i)
-                    console.log(leaf.timings[i])
+                    console.log(block.timings[i])
+                    console.log(op)
                 }
             }
             apply(op)
         }
+
+        const isVoid = editor.isVoid
+        editor.isVoid = element => {
+            if (element.type === 'speakerbox') {
+                return true
+            }
+
+            return isVoid(element)
+        }
+
+        const normalizeNode = editor.normalizeNode
+        editor.normalizeNode = entry => {
+            const [node, path] = entry
+
+            if (Block.isBlock(node)) {
+                const [speakerBox] = node.children
+                const contentNodeEntries = Array.from(
+                    Editor.nodes(editor, {
+                        at: path,
+                        match: child => Content.isContent(child),
+                    }),
+                )
+
+                if (contentNodeEntries.length > 1) {
+                    const [firstContent] = contentNodeEntries[0]
+                    const firstText = Node.string(firstContent)
+                    const words = firstText.split(' ')
+                    const firstTimings = node.timings.slice(0, words.length)
+                    const secondTimings = node.timings.slice(words.length, node.timings.length)
+
+                    // Set split timings for first node
+                    Transforms.setNodes(editor, { timings: firstTimings }, { at: path })
+
+                    // Insert second node
+                    const newBlockPath = Path.next(path)
+                    Transforms.insertNodes(
+                        editor,
+                        {
+                            ...node,
+                            timings: secondTimings,
+                            children: [{ ...speakerBox }],
+                        },
+                        { at: newBlockPath },
+                    )
+
+                    // Move second content node to new block node
+                    Transforms.moveNodes(editor, {
+                        at: contentNodeEntries[1][1],
+                        to: newBlockPath.concat(1),
+                    })
+
+                    return
+                }
+            }
+
+            normalizeNode(entry)
+        }
     }, [editor])
 
-    const renderElement = useCallback(props => <BlockView {...props} />, [])
+    const renderElement = useCallback(props => {
+        switch (props.element.type) {
+            case 'block':
+                return <BlockView {...props} />
+            case 'content':
+                return <ContentView {...props} />
+            case 'speakerbox':
+                return <SpeakerBoxView {...props} />
+            case 'unclear':
+                return <UnclearView {...props} />
+            default:
+                throw new Error(
+                    `Unsupported element type = ${props.element.type}, Element = ${props.element}`,
+                )
+        }
+    }, [])
     // if renderLeaf is wrapped with useCallback, leaves are not re-rendered on decoration changes
     // See https://github.com/ianstormtaylor/slate/issues/3447
-    const renderLeaf = (props: any) => <ContentView highlightCurrent={isAudioPlaying} {...props} />
-    const decorate = useCallback(entry => handleDecorate(entry, currentTime), [currentTime])
+    const renderLeaf = (props: any) => <ContentTextView highlightCurrent={isAudioPlaying} {...props} />
+    const decorate = useCallback(entry => handleDecorate(editor, entry, currentTime), [currentTime, editor])
 
     return (
         <Slate editor={editor} value={value} onChange={onChange}>

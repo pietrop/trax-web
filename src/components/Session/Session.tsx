@@ -1,6 +1,6 @@
 import React, { useCallback, useReducer, useState, useEffect, useRef, useMemo } from 'react'
 import styled from 'styled-components/macro'
-import { createEditor } from 'slate'
+import { createEditor, Transforms, Range, Node, Editor } from 'slate'
 import { withReact } from 'slate-react'
 import { withHistory } from 'slate-history'
 import { TransportLayer } from 'src/network'
@@ -8,6 +8,7 @@ import { Task, SessionStatus, WorkerId } from 'src/models'
 import { AudioPlayer } from 'src/components/AudioPlayer'
 import { GlossaryPanel } from 'src/components/GlossaryPanel'
 import { TaskEditor } from './TaskEditor'
+import { Block } from '../Editor/Editor'
 
 interface InitialState {
     state: 'initial'
@@ -96,12 +97,13 @@ async function getSessionStatus(transport: TransportLayer, dispatch: React.Dispa
 
 async function publishTask(
     task: Task,
+    data: any,
     transport: TransportLayer,
     dispatch: React.Dispatch<Action>,
     workerId: WorkerId,
 ) {
     dispatch({ type: 'publish-task' })
-    await transport.publishTask(task, workerId)
+    await transport.publishTask(task, data, workerId)
     dispatch({ type: 'task-published' })
 }
 
@@ -203,6 +205,52 @@ const PublishButton = styled.div`
     }
 `
 
+const UnclearButton = styled.div`
+    position: absolute;
+    bottom: 40px;
+    right: 160px;
+    letter-spacing: 0.3px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: Inter;
+    color: white;
+    cursor: pointer;
+    padding: 8px 24px;
+    background-color: rgb(21, 206, 150);
+    box-shadow: 0px 0px 10px 1px #c3c3c3;
+    border-radius: 15px;
+    transition: all 180ms ease-out;
+    user-select: none;
+
+    &:active {
+        transform: scale(1.03);
+    }
+`
+
+function convertEditorValueToPublishingData(editor: Editor, task: Task, workerId: WorkerId) {
+    const wordlist: any[] = []
+    for (const block of editor.children) {
+        if (Block.isBlock(block) && block.editable) {
+            const [, content] = block.children
+            const text = Node.string(content)
+            const words = text.split(' ').filter(w => w !== '')
+            wordlist.push.apply(wordlist, words)
+        }
+    }
+
+    return {
+        task_id: task.id,
+        worker_id: workerId,
+        segments: {
+            body: {
+                start: task.timing.start,
+                end: task.timing.end,
+                words: wordlist,
+            },
+        },
+    }
+}
+
 interface SessionProps {
     transport: TransportLayer
 }
@@ -237,12 +285,27 @@ export const Session = ({ transport }: SessionProps) => {
             return
         }
 
-        // const [editableNode] = Editor.node(editor, [1])
-        // console.log('leaf', Node.leaf(editableNode, [0]))
-        // console.log(editableNode)
-
-        await publishTask(session.task, transport, dispatch, session.status.workerId)
+        const data = convertEditorValueToPublishingData(editor, session.task, session.status.workerId)
+        await publishTask(session.task, data, transport, dispatch, session.status.workerId)
         requestNewTaskAndSetAudioTime(transport, dispatch, session.status.workerId, audioRef.current)
+    }
+
+    useEffect(() => {
+        const isInline = editor.isInline
+        editor.isInline = element => {
+            if (element.type === 'unclear') {
+                return true
+            }
+
+            return isInline(element)
+        }
+    }, [editor])
+
+    const handleUnclear = () => {
+        if (editor.selection) {
+            const text = Range.isCollapsed(editor.selection) ? '…' : Editor.string(editor, editor.selection)
+            Transforms.insertNodes(editor, { type: 'unclear', text })
+        }
     }
 
     return (
@@ -261,6 +324,9 @@ export const Session = ({ transport }: SessionProps) => {
                         )}
                     </ScrollingWrapper>
                     <PublishButton onClick={handlePublish}>Publish</PublishButton>
+                    <UnclearButton onMouseDown={e => e.preventDefault()} onClick={handleUnclear}>
+                        Unclear
+                    </UnclearButton>
                 </SessionPanel>
                 <RightSidebar>
                     <GlossaryPanel transport={transport} editor={editor} />

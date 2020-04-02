@@ -19,6 +19,7 @@ const Heading = styled.h2`
     font-family: 'Rubik', sans-serif;
     letter-spacing: 0.5px;
     font-weight: 600;
+    margin-bottom: 50px;
 `
 
 interface TaskProps {

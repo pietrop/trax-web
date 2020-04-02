@@ -1,20 +1,18 @@
 import React from 'react'
 import styled from 'styled-components/macro'
-import { Block, Content } from './Editor'
+import { Content } from '../Editor'
 
-const CommonBlock = styled.div`
-    padding: 12px 20px;
-    margin: 16px 0;
+const Common = styled.div`
+    width: 100%;
+    padding: 0px 16px 8px;
     outline: none;
     white-space: break-spaces;
     word-break: break-word;
-
-    &:first-of-type {
-        margin: 0;
-    }
+    line-height: 150%;
 `
 
-const EditableBlock = styled(CommonBlock)`
+const EditableContent = styled(Common)`
+    padding-top: 8px;
     background: rgb(255, 255, 255);
     border-top: 2px solid;
     border-bottom: 2px solid;
@@ -23,15 +21,16 @@ const EditableBlock = styled(CommonBlock)`
     border-radius: 5px;
     border-color: rgba(37, 210, 158, 0.2) rgb(37, 210, 158);
 `
-const ReadOnlyBlock = styled(CommonBlock)``
 
-interface BlockViewProps {
-    element: Block
+const ReadOnlyContent = styled(Common)``
+
+interface ContentViewProps {
+    element: Content
     attributes: any
-    children: Content[]
+    children: any
 }
-export const BlockView = ({ element, attributes, children }: BlockViewProps) => {
-    const Component = element.editable ? EditableBlock : ReadOnlyBlock
+export const ContentView = ({ element, attributes, children }: ContentViewProps) => {
+    const Component = element.editable ? EditableContent : ReadOnlyContent
 
     return (
         <Component

@@ -45,7 +45,7 @@ export class HttpClient implements TransportLayer {
         return task
     }
 
-    async publishTask(task: Task, workerId: WorkerId): Promise<void> {
+    async publishTask(task: Task, data: any, workerId: WorkerId): Promise<void> {
         const body = {
             task_id: task.id,
             worker_id: workerId,

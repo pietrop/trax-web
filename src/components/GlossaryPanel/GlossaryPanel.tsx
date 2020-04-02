@@ -3,7 +3,7 @@ import styled from 'styled-components/macro'
 import { ReactEditor } from 'slate-react'
 import { TransportLayer } from 'src/network'
 import { Glossary, Term } from 'src/models'
-import { Editor, Transforms } from 'slate'
+import { InputGroup, Icon } from '@blueprintjs/core'
 
 const Container = styled.div`
     max-height: 100%;
@@ -55,6 +55,7 @@ interface GlossaryPanelProps {
 
 export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
     const [glossary, setGlossary] = useState<Glossary | null>(null)
+    const [searchTerm, setSearchTerm] = useState<string | null>(null)
 
     useEffect(() => {
         transport.getGlossary().then(newGlossary => {
@@ -72,6 +73,14 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
     return (
         <Container>
             <Heading>Glossary</Heading>
+            <InputGroup
+                leftIcon="search"
+                onChange={(e: any) => {
+                    setSearchTerm(e.target.value)
+                }}
+                placeholder="Search terms"
+                value={searchTerm ?? ''}
+            />
             <TermListScrollContainer>
                 {glossary &&
                     glossary.terms.map((term, i) => (

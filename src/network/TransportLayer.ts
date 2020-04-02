@@ -4,6 +4,6 @@ export interface TransportLayer {
     authenticate(taskTypes?: string[]): Promise<WorkerId>
     getSessionStatus(workerId: WorkerId): Promise<SessionStatus>
     requestNewTask(workerId: WorkerId): Promise<Task>
-    publishTask(task: Task, workerId: WorkerId): Promise<void>
+    publishTask(task: Task, data: any, workerId: WorkerId): Promise<void>
     getGlossary(): Promise<Glossary>
 }

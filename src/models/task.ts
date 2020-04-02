@@ -5,12 +5,12 @@ import { Range } from 'src/utils/range'
 export interface Word extends Text {
     text: string
     timing: Range
-    speaker: string | null
 }
 
 export interface Segment {
     words: Word[]
     timing: Range
+    speaker: string | null
 }
 
 export interface Task {
