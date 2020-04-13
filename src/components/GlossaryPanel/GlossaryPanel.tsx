@@ -70,6 +70,15 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
         [editor],
     )
 
+    let items: string[] = []
+    if (glossary) {
+        if (searchTerm === null || searchTerm === '') {
+            items = glossary.terms
+        } else {
+            items = glossary.terms.filter(t => t.toLowerCase().indexOf(searchTerm.toLowerCase()) >= 0)
+        }
+    }
+
     return (
         <Container>
             <Heading>Glossary</Heading>
@@ -83,7 +92,7 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
             />
             <TermListScrollContainer>
                 {glossary &&
-                    glossary.terms.map((term, i) => (
+                    items.map((term, i) => (
                         <TermItem
                             onMouseDown={e => e.preventDefault()}
                             onClick={e => {
