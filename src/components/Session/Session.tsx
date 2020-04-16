@@ -7,6 +7,7 @@ import { TransportLayer } from 'src/network'
 import { Task, SessionStatus, WorkerId } from 'src/models'
 import { AudioPlayer } from 'src/components/AudioPlayer'
 import { GlossaryPanel } from 'src/components/GlossaryPanel'
+import { AttachmentsPanel } from 'src/components/AttachmentsPanel'
 import { TaskEditor } from './TaskEditor'
 import { Block } from '../Editor/Editor'
 
@@ -233,7 +234,7 @@ function convertEditorValueToPublishingData(editor: Editor, task: Task, workerId
         if (Block.isBlock(block) && block.editable) {
             const [, content] = block.children
             const text = Node.string(content)
-            const words = text.split(' ').filter(w => w !== '')
+            const words = text.split(' ').filter((w) => w !== '')
             wordlist.push.apply(wordlist, words)
         }
     }
@@ -292,7 +293,7 @@ export const Session = ({ transport }: SessionProps) => {
 
     useEffect(() => {
         const isInline = editor.isInline
-        editor.isInline = element => {
+        editor.isInline = (element) => {
             if (element.type === 'unclear') {
                 return true
             }
@@ -324,11 +325,14 @@ export const Session = ({ transport }: SessionProps) => {
                         )}
                     </ScrollingWrapper>
                     <PublishButton onClick={handlePublish}>Publish</PublishButton>
-                    <UnclearButton onMouseDown={e => e.preventDefault()} onClick={handleUnclear}>
+                    <UnclearButton onMouseDown={(e) => e.preventDefault()} onClick={handleUnclear}>
                         Unclear
                     </UnclearButton>
                 </SessionPanel>
                 <RightSidebar>
+                    {session.state === 'inprogress' && (
+                        <AttachmentsPanel attachments={session.status.attachments} />
+                    )}
                     <GlossaryPanel transport={transport} editor={editor} />
                 </RightSidebar>
             </TopPane>
