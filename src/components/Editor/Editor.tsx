@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react'
 import { Editor, Element, Node, NodeEntry, Path, Point, Range as SlateRange, Text, Transforms } from 'slate'
 import { Editable, ReactEditor, Slate, RenderElementProps } from 'slate-react'
-import { Task, Word, Term, Segment } from 'src/models'
+import { Task, Word, GlossaryTerm, Segment } from 'src/models'
 import { Range } from 'src/utils/range'
 import { isPunctuation } from 'src/utils/text'
 import { BlockView } from './nodes/BlockView'
@@ -27,7 +27,7 @@ interface Tag {
 
 interface GlossTermTag {
     type: 'text'
-    term: Term
+    term: GlossaryTerm
 }
 
 interface EditorProps {
@@ -149,7 +149,7 @@ function createBlocks(segment: Segment, { editable }: { editable: boolean }): Bl
         return chunks
     }, [])
 
-    return paragraphs.map(p => {
+    return paragraphs.map((p) => {
         const [content, timings] = createContent(p, { editable })
         const speakerBox = createSpeakerBox(segment.speaker, segment.timing.end - segment.timing.start)
 
@@ -168,7 +168,7 @@ function splitTimingsBasedOnOffset(timings: Timing[], offset: number): [Timing[]
     let after: Timing[]
     let now: Timing[]
 
-    const i = timings.findIndex(timing => timing.chars.end >= offset)
+    const i = timings.findIndex((timing) => timing.chars.end >= offset)
 
     if (i === -1) {
         before = timings.slice()
@@ -191,7 +191,7 @@ function splitTimings(timings: Timing[], time: number): [Timing[], Timing[], Tim
     let after: Timing[]
     let now: Timing[]
 
-    const i = timings.findIndex(timing => timing.time.end >= time)
+    const i = timings.findIndex((timing) => timing.time.end >= time)
 
     if (i === -1) {
         before = timings.slice()
@@ -323,7 +323,8 @@ export const TextEditor = ({
             const node = ReactEditor.toSlateNode(editor, e.target)
             const path = ReactEditor.findPath(editor, node)
             if (
-                Array.from(Editor.nodes(editor, { at: path, match: n => Content.isContent(n) })).length === 0
+                Array.from(Editor.nodes(editor, { at: path, match: (n) => Content.isContent(n) })).length ===
+                0
             ) {
                 console.log("Clicked on node that has no Content ancestor. This won't seek audio.")
                 return
@@ -338,7 +339,7 @@ export const TextEditor = ({
 
             if (Block.isBlock(block)) {
                 const timings = block.timings
-                const i = timings.findIndex(timing => timing.chars.end >= offset)
+                const i = timings.findIndex((timing) => timing.chars.end >= offset)
                 if (i === -1) {
                     console.assert(
                         'ERROR: Selection was made but the block does not have the relevant Timing entry',
@@ -359,7 +360,7 @@ export const TextEditor = ({
 
     useEffect(() => {
         const apply = editor.apply
-        editor.apply = op => {
+        editor.apply = (op) => {
             if (op.type === 'insert_text') {
                 const [block] = Editor.node(editor, op.path, { depth: 1 })
 
@@ -380,7 +381,7 @@ export const TextEditor = ({
                     //         }
                     //     }
                     // }
-                    const i = block.timings.findIndex(timing => Range.contains(timing.chars, op.offset))
+                    const i = block.timings.findIndex((timing) => Range.contains(timing.chars, op.offset))
                     console.log(i)
                     console.log(block.timings[i])
                     console.log(op)
@@ -390,7 +391,7 @@ export const TextEditor = ({
         }
 
         const isVoid = editor.isVoid
-        editor.isVoid = element => {
+        editor.isVoid = (element) => {
             if (element.type === 'speakerbox') {
                 return true
             }
@@ -399,7 +400,7 @@ export const TextEditor = ({
         }
 
         const normalizeNode = editor.normalizeNode
-        editor.normalizeNode = entry => {
+        editor.normalizeNode = (entry) => {
             const [node, path] = entry
 
             if (Block.isBlock(node)) {
@@ -407,7 +408,7 @@ export const TextEditor = ({
                 const contentNodeEntries = Array.from(
                     Editor.nodes(editor, {
                         at: path,
-                        match: child => Content.isContent(child),
+                        match: (child) => Content.isContent(child),
                     }),
                 )
 
@@ -447,7 +448,7 @@ export const TextEditor = ({
         }
     }, [editor])
 
-    const renderElement = useCallback(props => {
+    const renderElement = useCallback((props) => {
         switch (props.element.type) {
             case 'block':
                 return <BlockView {...props} />
@@ -466,7 +467,7 @@ export const TextEditor = ({
     // if renderLeaf is wrapped with useCallback, leaves are not re-rendered on decoration changes
     // See https://github.com/ianstormtaylor/slate/issues/3447
     const renderLeaf = (props: any) => <ContentTextView highlightCurrent={isAudioPlaying} {...props} />
-    const decorate = useCallback(entry => handleDecorate(editor, entry, currentTime), [currentTime, editor])
+    const decorate = useCallback((entry) => handleDecorate(editor, entry, currentTime), [currentTime, editor])
 
     return (
         <Slate editor={editor} value={value} onChange={onChange}>

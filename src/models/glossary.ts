@@ -1,4 +1,5 @@
-export type Term = string
+import { GlossaryTerm } from 'src/models'
+
 export interface Glossary {
-    terms: Term[]
+    terms: GlossaryTerm[]
 }

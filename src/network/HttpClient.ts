@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
 import { TransportLayer } from './TransportLayer'
-import { Task, Glossary, WorkerId, SessionStatus } from 'src/models'
+import { Task, Glossary, WorkerId, SessionStatus, GlossaryTerm, TermRequestBody } from 'src/models'
 import {
     WorkerStatusJSON,
     SessionStatusJSON,
@@ -9,6 +9,7 @@ import {
     toTask,
     toGlossary,
     toSessionStatus,
+    toGlossaryTerm,
 } from './responses'
 
 interface HttpClientOptions {
@@ -53,7 +54,7 @@ export class HttpClient implements TransportLayer {
                 body: {
                     start: task.text.editable.timing.start,
                     end: task.text.editable.timing.end,
-                    words: task.text.editable.words.map(w => ({
+                    words: task.text.editable.words.map((w) => ({
                         word: w.text,
                         start: w.timing.start,
                         end: w.timing.end,
@@ -67,7 +68,11 @@ export class HttpClient implements TransportLayer {
 
     async getGlossary(): Promise<Glossary> {
         const response = await this.client.get<GlossaryJSON>('/gloss')
-        const glossary = toGlossary(response.data)
-        return glossary
+        return toGlossary(response.data)
+    }
+
+    async addGlossary(data: TermRequestBody): Promise<GlossaryTerm> {
+        const response = await this.client.post('/gloss', { data })
+        return toGlossaryTerm(data, response)
     }
 }

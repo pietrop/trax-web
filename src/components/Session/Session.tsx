@@ -177,7 +177,7 @@ const ScrollingWrapper = styled.div`
 `
 
 const RightSidebar = styled.aside`
-    min-width: 200px;
+    min-width: 250px;
     max-width: 250px;
     background-color: white;
     border-left: 1px solid #e1e4e8;
@@ -233,7 +233,7 @@ function convertEditorValueToPublishingData(editor: Editor, task: Task, workerId
         if (Block.isBlock(block) && block.editable) {
             const [, content] = block.children
             const text = Node.string(content)
-            const words = text.split(' ').filter(w => w !== '')
+            const words = text.split(' ').filter((w) => w !== '')
             wordlist.push.apply(wordlist, words)
         }
     }
@@ -292,7 +292,7 @@ export const Session = ({ transport }: SessionProps) => {
 
     useEffect(() => {
         const isInline = editor.isInline
-        editor.isInline = element => {
+        editor.isInline = (element) => {
             if (element.type === 'unclear') {
                 return true
             }
@@ -324,7 +324,7 @@ export const Session = ({ transport }: SessionProps) => {
                         )}
                     </ScrollingWrapper>
                     <PublishButton onClick={handlePublish}>Publish</PublishButton>
-                    <UnclearButton onMouseDown={e => e.preventDefault()} onClick={handleUnclear}>
+                    <UnclearButton onMouseDown={(e) => e.preventDefault()} onClick={handleUnclear}>
                         Unclear
                     </UnclearButton>
                 </SessionPanel>

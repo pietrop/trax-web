@@ -1,4 +1,4 @@
-import { Task, Word, Glossary, SessionStatus, WorkerId } from 'src/models'
+import { Task, Word, Glossary, SessionStatus, WorkerId, GlossaryTerm, TermRequestBody } from 'src/models'
 
 export interface WorkerStatusJSON {
     id: string
@@ -51,7 +51,10 @@ export interface GlossaryJSON {
     gloss: {
         id: string
         text: string
-        comment: string
+        fields: {
+            comment: string | null
+            url: string | null
+        }
     }[]
 }
 
@@ -100,7 +103,16 @@ export const toTask = (json: TaskJSON): Task => ({
 })
 
 export const toGlossary = (json: GlossaryJSON): Glossary => ({
-    terms: json.gloss.map(term => term.text),
+    terms: json.gloss.map((term) => ({
+        id: term.id,
+        text: term.text,
+        fields: { comment: term.fields.comment, url: term.fields.url },
+    })),
+})
+
+export const toGlossaryTerm = (data: TermRequestBody, response: any): GlossaryTerm => ({
+    ...data,
+    id: response.data.id,
 })
 
 export const toSessionStatus = (json: SessionStatusJSON, workerId: WorkerId): SessionStatus => ({
