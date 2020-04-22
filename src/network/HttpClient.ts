@@ -71,7 +71,7 @@ export class HttpClient implements TransportLayer {
         return toGlossary(response.data)
     }
 
-    async addGlossary(data: TermRequestBody): Promise<GlossaryTerm> {
+    async addGlossaryTerm(data: TermRequestBody): Promise<GlossaryTerm> {
         const response = await this.client.post('/gloss', { data })
         return toGlossaryTerm(data, response)
     }

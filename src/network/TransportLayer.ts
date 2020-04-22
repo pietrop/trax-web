@@ -6,5 +6,5 @@ export interface TransportLayer {
     requestNewTask(workerId: WorkerId): Promise<Task>
     publishTask(task: Task, data: any, workerId: WorkerId): Promise<void>
     getGlossary(): Promise<Glossary>
-    addGlossary(data: TermRequestBody): Promise<GlossaryTerm>
+    addGlossaryTerm(data: TermRequestBody): Promise<GlossaryTerm>
 }

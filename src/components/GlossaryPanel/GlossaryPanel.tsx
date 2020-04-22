@@ -135,7 +135,7 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
     )
 
     const onSaveTermClick = () => {
-        transport.addGlossary(glossaryTerm).then((newGlossaryTerm) => {
+        transport.addGlossaryTerm(glossaryTerm).then((newGlossaryTerm) => {
             const newGlossary = get(glossary, 'terms', []) as any
             newGlossary.push(newGlossaryTerm)
             setGlossary({ terms: newGlossary })
