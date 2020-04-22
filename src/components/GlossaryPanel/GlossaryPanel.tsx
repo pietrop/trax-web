@@ -20,7 +20,7 @@ const Heading = styled.h2`
     font-family: 'Inter', sans-serif;
     font-weight: 500;
     color: #394b59;
-    padding: 16px 0;
+    padding: 0px 0px 15px 0px;
     border-bottom: 1px solid #e1e4e8;
     text-align: center;
     margin-bottom: 0;

@@ -1,4 +1,5 @@
 import { WorkerId } from '.'
+import { Attachment } from './attachment'
 
 export interface SessionStatus {
     workerId: WorkerId
@@ -6,5 +7,5 @@ export interface SessionStatus {
     startedAt: Date
     glossaryModifiedAt: Date
     audioUrl: string
-    attachments: any
+    attachments: Attachment[]
 }

@@ -7,6 +7,7 @@ import { TransportLayer } from 'src/network'
 import { Task, SessionStatus, WorkerId } from 'src/models'
 import { AudioPlayer } from 'src/components/AudioPlayer'
 import { GlossaryPanel } from 'src/components/GlossaryPanel'
+import { AttachmentsPanel } from 'src/components/AttachmentsPanel'
 import { TaskEditor } from './TaskEditor'
 import { Block } from '../Editor/Editor'
 
@@ -329,6 +330,9 @@ export const Session = ({ transport }: SessionProps) => {
                     </UnclearButton>
                 </SessionPanel>
                 <RightSidebar>
+                    {session.state === 'inprogress' && (
+                        <AttachmentsPanel attachments={session.status.attachments} />
+                    )}
                     <GlossaryPanel transport={transport} editor={editor} />
                 </RightSidebar>
             </TopPane>
