@@ -22,7 +22,8 @@
     "styled-components": "^5.0.1",
     "styled-tools": "^1.7.1",
     "use-http": "^0.2.8",
-    "uuid": "^7.0.0"
+    "uuid": "^7.0.0",
+    "fuse.js": "^5.2.3"
   },
   "devDependencies": {
     "typescript": "^3.7.5",
