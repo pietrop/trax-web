@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, Fragment } from 'react'
 import styled from 'styled-components/macro'
 import { ReactEditor } from 'slate-react'
 import { TransportLayer } from 'src/network'
 import { Glossary, GlossaryTerm, TermRequestBody } from 'src/models'
 import { InputGroup, Button, Popover, Label, Classes } from '@blueprintjs/core'
-import { isEmpty, find, update, get } from 'lodash'
+import { isEmpty, find, update, get, map } from 'lodash'
+import Fuse from 'fuse.js'
 
 const Container = styled.div`
     max-height: 100%;
@@ -34,6 +35,7 @@ const TermItem = styled.div`
     height: 70px;
     padding: 12px 10px;
     border-bottom: 1px solid rgb(240, 240, 240);
+    position: relative;
 
     &:last-of-type {
         border-bottom: none;
@@ -46,7 +48,40 @@ const TermItem = styled.div`
     }
 `
 
+const TermItemTooltip = styled.div`
+    visibility: hidden;
+    position: absolute;
+    width: 190px;
+    background-color: rgb(53, 60, 68);
+    color: #fff;
+    border-radius: 6px;
+    z-index: 1;
+    border-radius: 6px;
+    z-index: 1;
+    top: 30px;
+    padding: 10px;
+    opacity: 0;
+    transition: opacity 1s;
+
+    ${TermItem}:hover & {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    &::after {
+        content: ' ';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: transparent transparent rgb(53, 60, 68) transparent;
+    }
+`
+
 const TermItemText = styled.p`
+    margin-bottom: 5px;
     color: #222222;
     font-size: 14px;
     font-family: 'Inter', sans-serif;
@@ -58,6 +93,11 @@ const TermItemComment = styled.p`
     font-size: 12px;
     font-family: 'Inter', sans-serif;
     font-weight: 200;
+    max-width: 240px;
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 `
 
 const AddTermContainer = styled.div`
@@ -111,7 +151,7 @@ interface GlossaryPanelProps {
 }
 
 export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
-    const [glossary, setGlossary] = useState<Glossary | null>(null)
+    const [glossary, setGlossary] = useState<Glossary>({ terms: [] })
     const [searchTerm, setSearchTerm] = useState<string | null>(null)
     const [glossaryTerm, setGlossaryTerm] = useState<TermRequestBody>({
         text: '',
@@ -126,6 +166,13 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
             setGlossary(newGlossary)
         })
     }, [])
+
+    const fuseSearchOptions = {
+        includeScore: true,
+        keys: ['text'],
+    }
+
+    const fuse = new Fuse(glossary.terms, fuseSearchOptions)
 
     const onTermClick = useCallback(
         (term: GlossaryTerm) => {
@@ -149,12 +196,23 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
         setGlossaryTerm(update(glossaryTerm, key, () => value))
     }
 
+    const highlightSearchResult = (text: string): any => {
+        if (searchTerm === null || searchTerm === '') {
+            return <TermItemText>{text}</TermItemText>
+        }
+
+        const withHighlight = map(text.split(''), (letter) => {
+            return searchTerm.includes(letter) ? <b>{letter}</b> : letter
+        })
+        return <TermItemText>{withHighlight}</TermItemText>
+    }
+
     let items: GlossaryTerm[] = []
     if (glossary) {
         if (searchTerm === null || searchTerm === '') {
             items = glossary.terms
         } else {
-            items = glossary.terms.filter((t) => t.text.toLowerCase().indexOf(searchTerm.toLowerCase()) >= 0)
+            items = map(fuse.search(searchTerm), 'item')
         }
     }
 
@@ -213,13 +271,19 @@ export const GlossaryPanel = ({ transport, editor }: GlossaryPanelProps) => {
                                 e.preventDefault()
                                 onTermClick(term)
                             }}
-                            key={i}>
-                            <TermItemText>{term.text}</TermItemText>
+                            key={`glossary-term-${i}`}>
+                            {highlightSearchResult(term.text)}
                             {!isEmpty(term.fields.comment) && (
-                                <TermItemComment>
-                                    {'Note: '}
-                                    {term.fields.comment}
-                                </TermItemComment>
+                                <React.Fragment>
+                                    <TermItemComment>
+                                        {'Note: '}
+                                        {term.fields.comment}
+                                    </TermItemComment>
+                                    <TermItemTooltip>
+                                        {'Note: '}
+                                        {term.fields.comment}
+                                    </TermItemTooltip>
+                                </React.Fragment>
                             )}
                         </TermItem>
                     ))}
