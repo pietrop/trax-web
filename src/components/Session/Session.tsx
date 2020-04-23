@@ -178,7 +178,7 @@ const ScrollingWrapper = styled.div`
 `
 
 const RightSidebar = styled.aside`
-    min-width: 200px;
+    min-width: 250px;
     max-width: 250px;
     background-color: white;
     border-left: 1px solid #e1e4e8;

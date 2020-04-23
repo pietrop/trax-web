@@ -1,4 +1,4 @@
-import { Task, Glossary, WorkerId, SessionStatus } from 'src/models'
+import { Task, Glossary, WorkerId, SessionStatus, GlossaryTerm, TermRequestBody } from 'src/models'
 
 export interface TransportLayer {
     authenticate(taskTypes?: string[]): Promise<WorkerId>
@@ -6,4 +6,5 @@ export interface TransportLayer {
     requestNewTask(workerId: WorkerId): Promise<Task>
     publishTask(task: Task, data: any, workerId: WorkerId): Promise<void>
     getGlossary(): Promise<Glossary>
+    addGlossaryTerm(data: TermRequestBody): Promise<GlossaryTerm>
 }
